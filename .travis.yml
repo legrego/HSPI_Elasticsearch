@@ -2,4 +2,3 @@
 solution: HS3_Elasticsearch.sln
 mono:
     - latest
-    - 3.12.0
