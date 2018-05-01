@@ -1,4 +1,5 @@
-A HomeSeer Plugin to ship events to your Elasticsearch Cluster!
+Ship your HomeSeer events to Elasticsearch!
+[![Build Status](https://travis-ci.org/legrego/HSPI_Elasticsearch.svg?branch=master)](https://travis-ci.org/legrego/HSPI_Elasticsearch)
 =====
 
 A C# Plugin for HomeSeer installations which publishes events to your [Elasticsearch](https://elastic.co) cluster.
