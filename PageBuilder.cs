@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Collections.Specialized;
 using HomeSeerAPI;
 using Scheduler;
+using Nest;
+using System.Collections.Generic;
 
 namespace HSPI_Elasticsearch
 {
@@ -138,6 +140,7 @@ namespace HSPI_Elasticsearch
 		private const string UsernameId = "UsernameId";
 		private const string PasswordId = "PasswordId";
 		private const string DebugLoggingId = "DebugLoggingId";
+		private const string SecurityTypeId = "SecurityTypeId";
 		private const string SaveButtonName = "Save";
 		private const string TestButtonName = "Test";
 		private const string ErrorDivId = "message_id";
@@ -208,16 +211,20 @@ namespace HSPI_Elasticsearch
 
 			stb.Append(@"<br>");
 			stb.Append(@"<div>");
-			stb.Append(@"<table class='full_width_table'");
-			stb.Append("<tr height='5'><td style='width:25%'></td><td style='width:75%'></td></tr>");
-			stb.Append($"<tr><td class='tablecell'>Enabled:</td><td class='tablecell' style='width: 100px'>{FormCheckBox(EnabledId, string.Empty, pluginConfig.Enabled)}</td></tr>");
-			stb.Append($"<tr><td class='tablecell'>Elasticsearch URL:</td><td class='tablecell' style='width: 100px'>{HtmlTextBox(ElasticsearchUrlId, pluginConfig.ElasticsearchUrl, 40)}</td></tr>");
-			stb.Append($"<tr><td class='tablecell'>Username:</td><td class='tablecell' style='width: 100px'>{HtmlTextBox(UsernameId, pluginConfig.Username, 40)}</td></tr>");
-			stb.Append($"<tr><td class='tablecell'>Password:</td><td class='tablecell' style='width: 100px'>{HtmlPasswordBox(PasswordId, pluginConfig.Password, 40)}</td></tr>");
-			stb.Append($"<tr><td class='tablecell'>Debug Logging Enabled:</td><td colspan=2 class='tablecell'>{FormCheckBox(DebugLoggingId, string.Empty, pluginConfig.DebugLogging)}</ td ></ tr > ");
-			stb.Append($"<tr><td colspan=2><div id='{ErrorDivId}' style='color:Red'></div></td><td></td></tr>");
-			stb.Append($"<tr><td colspan=2><div id='{SuccessDivId}' style='color:dodgerblue'></div></td><td></td></tr>");
-			stb.Append($"<tr><td colspan=2>{FormButton("Test Configuration", TestButtonName, "Test Configuration", false)} {FormButton("Save", SaveButtonName, "Save Settings")}</td></tr>");
+			stb.Append(@"<style> .headerCell {width: 25%;} </style>");
+			stb.Append(@"<table class='full_width_table'>");
+			stb.Append(@"<tr><td class='tableheader' colspan=2>Plugin Settings</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Enabled:</td><td class='tablecell' style='width: 100px'>{FormCheckBox(EnabledId, string.Empty, pluginConfig.Enabled)}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Debug Logging Enabled:</td><td colspan=2 class='tablecell'>{FormCheckBox(DebugLoggingId, string.Empty, pluginConfig.DebugLogging)}</td></tr>");
+
+			stb.Append(@"<tr><td class='tableheader' colspan=2>Elasticsearch Settings</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Elasticsearch URL:</td><td class='tablecell' style='width: 100px'>{HtmlTextBox(ElasticsearchUrlId, pluginConfig.ElasticsearchUrl, 40)}</td></tr>");
+			stb.Append(this.BuildSecurityOptions(pluginConfig));
+			
+			
+			stb.Append($"<tr><td colspan=2><div id='{ErrorDivId}' style='color:Red'></div></td></tr>");
+			stb.Append($"<tr><td colspan=2><div id='{SuccessDivId}' style='color:dodgerblue'></div></td></tr>");
+			stb.Append($"<tr><td colspan=2>{FormButton(TestButtonName, TestButtonName, "Test Configuration")} {FormButton(SaveButtonName, SaveButtonName, "Save Settings")}</td></tr>");
 			stb.Append(@" </table>");
 			stb.Append(@"</div>");
 			stb.Append(PageBuilderAndMenu.clsPageBuilder.FormEnd());
@@ -228,10 +235,75 @@ namespace HSPI_Elasticsearch
 		public PageReturn PostHandler_HS3_Elasticsearch(String pPageName, String pCleanName, NameValueCollection pArgs)
         {
 			PluginConfig config = this.mCore.pluginConfig;
-			PopulatePluginConfig(config, pArgs);
-			config.FireConfigChanged();
-            return new PageReturn("<script>window.location='" + pPageName + "';</script>\n", true);
+			string action = pArgs["id"];
+
+			if(NameToIdWithPrefix(SaveButtonName) == action)
+			{
+				try
+				{
+					PopulatePluginConfig(config, pArgs);
+					config.FireConfigChanged();
+					this.divToUpdate.Add(SuccessDivId, "Settings updated successfully");
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine("Error updating settings: " + e.Message);
+					this.divToUpdate.Add(ErrorDivId, "Error updating settings");
+				}
+			}
+			else if(NameToIdWithPrefix(TestButtonName) == action)
+			{
+				PluginConfig testConfig = new PluginConfig(HS, true);
+				PopulatePluginConfig(testConfig, pArgs);
+
+				ConnectionTestResults results = ElasticsearchManager.PerformConnectivityTest(testConfig);
+
+				if(results.ConnectionSuccessful)
+				{
+					StringBuilder stb = new StringBuilder();
+					stb.Append(@"<div>");
+					stb.Append(@"<h3>Connection Test Successful!<h3>");
+					stb.Append(this.BuildClusterHealthView(results.ClusterHealth));
+					stb.Append(@"</div>");
+					this.divToUpdate.Add(SuccessDivId, stb.ToString());
+					this.divToUpdate.Add(ErrorDivId, "");
+				}
+				else
+				{
+					string message = "Connection test failed";
+					if(results.ClusterHealth != null && results.ClusterHealth.OriginalException != null)
+					{
+						message += ": " + results.ClusterHealth.OriginalException.Message;
+					}
+
+					this.divToUpdate.Add(SuccessDivId, "");
+					this.divToUpdate.Add(ErrorDivId, message);
+				}
+			}
+
+            return new PageReturn("", false);
         }
+
+		private string BuildClusterHealthView(IClusterHealthResponse health)
+		{
+			StringBuilder stb = new StringBuilder();
+			stb.Append(@"<div>");
+			stb.Append(@"<style> .headerCell {width: 25%;} </style>");
+			stb.Append(@"<table class='full_width_table'>");
+			stb.Append(@"<tr><td class='tableheader' colspan=2>Cluster Health</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Cluster Name:</td><td class='tablecell' style='width: 100px'>{health.ClusterName}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Status:</td><td class='tablecell' style='width: 100px color: {health.Status};'>{health.Status}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Number of Nodes:</td><td class='tablecell' style='width: 100px'>{health.NumberOfNodes}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Number of Data Nodes:</td><td class='tablecell' style='width: 100px'>{health.NumberOfDataNodes}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Active Primary Shards:</td><td class='tablecell' style='width: 100px'>{health.ActivePrimaryShards}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Active Shards:</td><td class='tablecell' style='width: 100px'>{health.ActiveShards}</td></tr>");
+			stb.Append($"<tr><td class='tablecell headerCell'>Number of Pending Tasks:</td><td class='tablecell' style='width: 100px'>{health.NumberOfPendingTasks}</td></tr>");
+			stb.Append(@" </table>");
+			stb.Append(@"</div>");
+			stb.Append(PageBuilderAndMenu.clsPageBuilder.FormEnd());
+
+			return stb.ToString();
+		}
 
 		protected void PopulatePluginConfig(PluginConfig config, NameValueCollection formData)
 		{
@@ -240,6 +312,7 @@ namespace HSPI_Elasticsearch
 			config.Username = formData.Get(UsernameId);
 			config.Password = formData.Get(PasswordId);
 			config.DebugLogging = formData.Get(DebugLoggingId) == "checked";
+			config.SecurityType = formData.Get(SecurityTypeId);
 		}
         
         public PageReturn Page_HS3_Elasticsearch(String pPageName, String pCleanName, NameValueCollection pArgs)
@@ -269,6 +342,46 @@ namespace HSPI_Elasticsearch
 		protected static string HtmlPasswordBox(string name, string defaultText, int size = 25)
 		{
 			return $"<input type=\'password\' id=\'{NameToIdWithPrefix(name)}\' size=\'{size}\' name=\'{name}\' value=\'{defaultText}\'>";
+		}
+
+		protected string BuildSecurityOptions(PluginConfig pluginConfig)
+		{
+			StringBuilder stb = new StringBuilder();
+
+			List<Pair> securityOptions = new List<Pair>();
+			securityOptions.Add(new Pair() { Name = "Disabled", Value = "disabled" });
+			securityOptions.Add(new Pair() { Name = "X-Pack (Basic Security)", Value = "basic" });
+
+			stb.Append($"<tr><td class='tablecell headerCell'>Security:</td><td class='tablecell' style='width: 100px'>{HtmlDropDown(SecurityTypeId, pluginConfig.SecurityType, securityOptions)}</td></tr>");
+
+			stb.Append($"<tr class='securityOption'><td class='tablecell headerCell'>Username:</td><td class='tablecell' style='width: 100px'>{HtmlTextBox(UsernameId, pluginConfig.Username, 40)}</td></tr>");
+			stb.Append($"<tr class='securityOption'><td class='tablecell headerCell'>Password:</td><td class='tablecell' style='width: 100px'>{HtmlPasswordBox(PasswordId, pluginConfig.Password, 40)}</td></tr>");
+
+			string dropdownId = NameToIdWithPrefix(SecurityTypeId);
+			string changeHandler = @"function updateSecurityOptionVisibility(e) {
+				const value = e ? e.target.value : $('#" + dropdownId + @"').val();
+				switch(value) {
+					case 'basic':
+						$('.securityOption').show();
+						break;
+					default:
+						$('.securityOption').hide();
+				}
+			}";
+			string dropdownScript = @"$(() => { $('#"+dropdownId+@"').change(updateSecurityOptionVisibility); updateSecurityOptionVisibility(); })";
+			stb.Append($"<tr><td><script>{changeHandler} {dropdownScript}</script></td></tr>");
+
+			return stb.ToString();
+		}
+
+		protected string HtmlDropDown(string name, string value, List<Pair> values)
+		{
+			var dropdown = new clsJQuery.jqDropList(name, PageName, false);
+			dropdown.id = NameToIdWithPrefix(name);
+			dropdown.items = values;
+			dropdown.selectedItemIndex = values.FindIndex(p => p.Value == value);
+
+			return dropdown.Build();
 		}
 
 		protected string FormCheckBox(string name, string label, bool @checked)
