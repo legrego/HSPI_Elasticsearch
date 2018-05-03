@@ -12,6 +12,7 @@ namespace HSPI_Elasticsearch
 
 		private const string EnabledKey = "Enabled";
 		private const string ElasticsearchUrlKey = "ElasticsearchUrl";
+		private const string SecurityTypeKey = "SecurityType";
 		private const string UsernameKey = "Username";
 		private const string PasswordKey = "Password";
 		private const string DebugLoggingKey = "DebugLogging";
@@ -22,6 +23,7 @@ namespace HSPI_Elasticsearch
 		private bool enabled;
 		private bool debugLogging;
 		private string elasticsearchUrl;
+		private string securityType;
 		private string username;
 		private string password;
 		private bool disposedValue = false;
@@ -42,6 +44,7 @@ namespace HSPI_Elasticsearch
 				elasticsearchUrl = GetValue(ElasticsearchUrlKey, string.Empty);
 				debugLogging = GetValue(DebugLoggingKey, false);
 				enabled = GetValue<bool>(EnabledKey, true);
+				securityType = GetValue(SecurityTypeKey, "disabled");
 				username = GetValue<string>(UsernameKey, string.Empty);
 				password = GetValue<string>(PasswordKey, string.Empty);
 			}
@@ -152,9 +155,35 @@ namespace HSPI_Elasticsearch
 			}
 		}
 
-		/// <summary>
-		/// Gets or sets the From Number value.
-		/// </summary>
+		public string SecurityType
+		{
+			get
+			{
+				configLock.EnterReadLock();
+				try
+				{
+					return securityType;
+				}
+				finally
+				{
+					configLock.ExitReadLock();
+				}
+			}
+
+			set
+			{
+				configLock.EnterWriteLock();
+				try
+				{
+					SetValue(SecurityTypeKey, value, ref securityType);
+				}
+				finally
+				{
+					configLock.ExitWriteLock();
+				}
+			}
+		}
+
 		public string Username
 		{
 			get

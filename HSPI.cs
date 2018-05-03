@@ -213,7 +213,6 @@ namespace HSPI_Elasticsearch
         public string InitIO(string port)
         {
             Console.WriteLine("InitIO called!");
-            Thread.Sleep(5000);
             Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
