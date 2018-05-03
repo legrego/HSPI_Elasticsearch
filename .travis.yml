@@ -3,4 +3,4 @@ solution: HS3_Elasticsearch.sln
 mono:
     - latest
 
-after_success: ./Scripts/package_plugin.sh
+script: ./Scripts/package_plugin.sh
