@@ -1,0 +1,6 @@
+﻿HSPI_Elasticsearch.exe,.,0
+HSPI_Elasticsearch.exe.config,.,0
+Elasticsearch.Net.dll,.\bin\HS3_Elasticsearch,0
+Elasticsearch.net.xml,.\bin\HS3_Elasticsearch,0
+Nest.dll,.\bin\Elasticsearch,0
+Nest.xml,.\bin\Elasticsearch,0

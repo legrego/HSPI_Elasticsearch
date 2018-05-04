@@ -87,11 +87,14 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".travis.yml" />
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="CODE_OF_CONDUCT.md" />
     <None Include="packages.config" />
     <None Include="README.md" />
+    <None Include="Scripts\package_plugin.sh" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0">
@@ -118,6 +121,7 @@
   <ItemGroup>
     <Content Include=".gitattributes" />
     <Content Include=".gitignore" />
+    <Content Include="install.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

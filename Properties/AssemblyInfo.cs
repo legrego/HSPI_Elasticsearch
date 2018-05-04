@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("HS3_Elasticsearch")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("N Possible")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("HS3_Elasticsearch")]
 [assembly: AssemblyCopyright("Copyright © 2018 Larry Gregory")]
 [assembly: AssemblyTrademark("")]
