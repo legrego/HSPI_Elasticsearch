@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Threading;
 using HomeSeerAPI;
 using HSPI_Elasticsearch.Documents;
+using HSPI_Elasticsearch.Settings;
 
 [assembly: System.Security.SecurityRules(System.Security.SecurityRuleSet.Level1)]
 namespace HSPI_Elasticsearch
@@ -20,6 +21,7 @@ namespace HSPI_Elasticsearch
         public bool Running = true;
         public IHSApplication hsHost;
         public IAppCallbackAPI hsHostCB;
+		public SettingsManager settingsManager;
 
         // HS3 Plugin properties
         public string Name { get; private set; }
@@ -155,6 +157,9 @@ namespace HSPI_Elasticsearch
 
         public void HSEvent(HomeSeerAPI.Enums.HSEvent EventType, object[] parms)
         {
+			bool canContinue = this.settingsManager.GetSettings().IsEventTypeEnabled((int) EventType);
+			if(!canContinue) return;
+
 			BaseDocument document = null;
             try
             {
@@ -164,8 +169,6 @@ namespace HSPI_Elasticsearch
                     case Enums.HSEvent.CONFIG_CHANGE:
                         {
 							document = new ConfigChangeEvent(parms);
-                            Console.WriteLine("Got CONFIG_CHANGE event");
-                            Console.WriteLine(" - HSEvent {0}: {1}/{2}/{3}/{4}/{5}", EventType.ToString(), parms[5].ToString(), parms[0].ToString(), parms[1].ToString(), parms[2].ToString(), parms[3].ToString());
                         }
                         break;
                     case Enums.HSEvent.LOG:
@@ -235,6 +238,8 @@ namespace HSPI_Elasticsearch
             wpd.plugInName = Name;
             hsHostCB.RegisterLink(wpd);
             hsHostCB.RegisterConfigLink(wpd);
+
+			settingsManager = new SettingsManager();
 
             Console.WriteLine("INIT IO complete");
             return "";

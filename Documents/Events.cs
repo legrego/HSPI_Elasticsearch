@@ -155,18 +155,7 @@ namespace HSPI_Elasticsearch.Documents
 		public LogEvent(object[] eventParams) : base("LOG")
 		{
 			this.TypeId = eventParams[0] as string;
-
-			DateTime parsedTime;
-			if(DateTime.TryParse(eventParams[1] as string, out parsedTime))
-			{
-				this.Time = parsedTime.ToString(DATE_TIME_FORMAT);
-			}
-			else
-			{
-				// FIXME: Should not happen
-				Console.WriteLine("Failed time parse.. FIXME");
-			}
-
+			// parameter 1 is the Log Time, which we assume to be close enough to when the Log event was triggered.
 			this.MessageClass = eventParams[2] as string;
 			this.Message = eventParams[3] as string;
 			this.Color = eventParams[4] as string;

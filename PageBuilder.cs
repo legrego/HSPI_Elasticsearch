@@ -8,6 +8,8 @@ using HomeSeerAPI;
 using Scheduler;
 using Nest;
 using System.Collections.Generic;
+using HSPI_Elasticsearch.Settings;
+using System.Linq;
 
 namespace HSPI_Elasticsearch
 {
@@ -220,7 +222,8 @@ namespace HSPI_Elasticsearch
 			stb.Append(@"<tr><td class='tableheader' colspan=2>Elasticsearch Settings</td></tr>");
 			stb.Append($"<tr><td class='tablecell headerCell'>Elasticsearch URL:</td><td class='tablecell' style='width: 100px'>{HtmlTextBox(ElasticsearchUrlId, pluginConfig.ElasticsearchUrl, 40)}</td></tr>");
 			stb.Append(this.BuildSecurityOptions(pluginConfig));
-			
+
+			stb.Append(this.BuildEventTypesSelection());			
 			
 			stb.Append($"<tr><td colspan=2><div id='{ErrorDivId}' style='color:Red'></div></td></tr>");
 			stb.Append($"<tr><td colspan=2><div id='{SuccessDivId}' style='color:dodgerblue'></div></td></tr>");
@@ -243,6 +246,9 @@ namespace HSPI_Elasticsearch
 				{
 					PopulatePluginConfig(config, pArgs);
 					config.FireConfigChanged();
+
+					UpdatePluginSettings(this.pluginInstance.settingsManager, pArgs);
+					
 					this.divToUpdate.Add(SuccessDivId, "Settings updated successfully");
 				}
 				catch (Exception e)
@@ -300,7 +306,6 @@ namespace HSPI_Elasticsearch
 			stb.Append($"<tr><td class='tablecell headerCell'>Number of Pending Tasks:</td><td class='tablecell' style='width: 100px'>{health.NumberOfPendingTasks}</td></tr>");
 			stb.Append(@" </table>");
 			stb.Append(@"</div>");
-			stb.Append(PageBuilderAndMenu.clsPageBuilder.FormEnd());
 
 			return stb.ToString();
 		}
@@ -313,6 +318,25 @@ namespace HSPI_Elasticsearch
 			config.Password = formData.Get(PasswordId);
 			config.DebugLogging = formData.Get(DebugLoggingId) == "checked";
 			config.SecurityType = formData.Get(SecurityTypeId);
+		}
+
+		protected void UpdatePluginSettings(HSPI_Elasticsearch.Settings.SettingsManager manager, NameValueCollection formData)
+		{
+			AppSettings settings = manager.GetSettings();
+
+			foreach(string arg in formData)
+			{
+				if(arg.StartsWith("eventType_"))
+				{
+					int eventTypeId = int.Parse(arg.Split('_')[1]);
+					bool enabled = formData[arg] == "checked";
+					settings
+						.EventTypeSettings
+						.First(s => s.EventType.EventTypeId == eventTypeId).Enabled = enabled;
+				}
+			}
+
+			manager.UpdateSettings(settings);
 		}
         
         public PageReturn Page_HS3_Elasticsearch(String pPageName, String pCleanName, NameValueCollection pArgs)
@@ -370,6 +394,26 @@ namespace HSPI_Elasticsearch
 			}";
 			string dropdownScript = @"$(() => { $('#"+dropdownId+@"').change(updateSecurityOptionVisibility); updateSecurityOptionVisibility(); })";
 			stb.Append($"<tr><td><script>{changeHandler} {dropdownScript}</script></td></tr>");
+
+			return stb.ToString();
+		}
+
+		protected string BuildEventTypesSelection()
+		{
+			AppSettings settings = this.pluginInstance.settingsManager.GetSettings();
+			StringBuilder stb = new StringBuilder();
+			stb.Append(@"<div>");
+			stb.Append(@"<style> .headerCell {width: 25%;} </style>");
+			stb.Append(@"<table class='full_width_table'>");
+			stb.Append(@"<tr><td class='tableheader'>Event Types</td></tr>");
+			settings
+				.EventTypeSettings
+				.Select((e) => stb.Append(
+					$"<tr><td class='tablecell'>{FormCheckBox("eventType_" + e.EventType.EventTypeId, e.EventType.Name, e.Enabled)}</td></tr>"
+				))
+				.ToArray();
+			stb.Append(@" </table>");
+			stb.Append(@"</div>");
 
 			return stb.ToString();
 		}
