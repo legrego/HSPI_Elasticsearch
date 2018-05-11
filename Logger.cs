@@ -37,11 +37,8 @@ namespace HSPI_Elasticsearch
 		{
 			string entry = String.Format(CultureInfo.InvariantCulture, "Error:{0}", message);
 
-			if(HS == null)
-			{
-				Console.Error.WriteLine(entry);
-			}
-			else
+			Console.Error.WriteLine(entry);
+			if(HS != null)
 			{
 				HS.WriteLogEx(this.Name, entry, "#FF0000");
 			}
@@ -49,11 +46,8 @@ namespace HSPI_Elasticsearch
 
 		public void LogInfo(string message)
 		{
-			if(HS == null)
-			{
-				Console.WriteLine(message);
-			}
-			else
+			Console.WriteLine(message);
+			if(HS != null)
 			{
 				HS.WriteLog(this.Name, message);
 			}
@@ -62,11 +56,9 @@ namespace HSPI_Elasticsearch
 		public void LogWarning(string message)
 		{
 			string entry = String.Format(CultureInfo.InvariantCulture, "Warning:{0}", message);
-			if(HS == null)
+			Console.Error.WriteLine(entry);
+			if(HS != null)
 			{
-				Console.Error.WriteLine(entry);
-			}
-			else {
 				HS.WriteLogEx(this.Name, entry, "#D58000");
 			}
 		}
