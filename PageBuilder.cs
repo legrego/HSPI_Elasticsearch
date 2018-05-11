@@ -36,6 +36,7 @@ namespace HSPI_Elasticsearch
         protected IHSApplication hsHost;
         protected IAppCallbackAPI hsHostCB;
         protected HSPI_Elasticsearch.HSPI pluginInstance;
+		protected Logger logger;
 
         public PageBuilderBase(IHSApplication pHS, IAppCallbackAPI pHSCB, HSPI_Elasticsearch.HSPI plugInInst)
             : base("dummy")
@@ -43,6 +44,7 @@ namespace HSPI_Elasticsearch
             hsHost = pHS;
             hsHostCB = pHSCB;
             pluginInstance = plugInInst;
+			this.logger = pluginInstance.logger;
             reset();
         }
 
@@ -70,7 +72,7 @@ namespace HSPI_Elasticsearch
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception : " + e.ToString());
+				logger.LogError(string.Format("Exception getting page {0}: {1}", pPageName, e.Message));
             }
 
             PageReturn page = handler.Invoke(this, new object[] { pPageName, pPageNameClean, parts }) as PageReturn;
@@ -116,7 +118,7 @@ namespace HSPI_Elasticsearch
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception : " + e.ToString());
+				logger.LogError(string.Format("Exception handling postback for page {0}: {1}", pPageName, e.Message));
             }
 
             PageReturn page = handler.Invoke(this, new object[] { pPageName, pPageNameClean, parts }) as PageReturn;
@@ -253,7 +255,7 @@ namespace HSPI_Elasticsearch
 				}
 				catch (Exception e)
 				{
-					Console.WriteLine("Error updating settings: " + e.Message);
+					logger.LogError(string.Format("Error updating settings: {0}", e.Message));
 					this.divToUpdate.Add(ErrorDivId, "Error updating settings");
 				}
 			}
