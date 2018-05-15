@@ -100,6 +100,7 @@
     <Compile Include="EventTypes.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="HSPI.cs" />
+    <Compile Include="Logger.cs" />
     <Compile Include="PageBuilder.cs" />
     <Compile Include="PluginConfig.cs" />
     <Compile Include="Program.cs" />

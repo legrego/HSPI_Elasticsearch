@@ -45,7 +45,7 @@ namespace HSPI_Elasticsearch
         {
             string[] cmdArgs = Environment.GetCommandLineArgs();
             Console.WriteLine("Manager::run() - arguments are {0}", Environment.CommandLine);
-            String paramServer = "192.168.10.20";
+            String paramServer = "127.0.0.1";
             String paramInstance = "";
             foreach (string arg in cmdArgs)
             {

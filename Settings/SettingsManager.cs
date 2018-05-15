@@ -17,19 +17,22 @@ namespace HSPI_Elasticsearch.Settings
 
 		private AppSettings settingsCache;
 
-		public SettingsManager()
+		private Logger logger;
+
+		public SettingsManager(Logger logger)
 		{
-			Console.WriteLine("Initializing Settings");
+			this.logger = logger;
+			logger.LogInfo("Initializing Settings");
 			if(!File.Exists(Constants.PLUGIN_DB_FILE_NAME))
 			{
-				Console.WriteLine("Creating file");
+				logger.LogInfo("Creating database file");
 				SQLiteConnection.CreateFile(Constants.PLUGIN_DB_FILE_NAME);
 			}
 			connection = new SQLiteConnection(string.Format("Data Source={0}; Version=3;", Constants.PLUGIN_DB_FILE_NAME));
 			connection.Open();
-			Console.WriteLine("DB Connection Open");
+			logger.LogInfo("Database opened");
 			this.SetupDatabaseIfRequired();
-			Console.WriteLine("Database setup!");
+			logger.LogInfo("Database setup and ready for use!");
 		}
 
 		public AppSettings GetSettings()

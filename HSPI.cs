@@ -22,6 +22,7 @@ namespace HSPI_Elasticsearch
         public IHSApplication hsHost;
         public IAppCallbackAPI hsHostCB;
 		public SettingsManager settingsManager;
+		public Logger logger;
 
         // HS3 Plugin properties
         public string Name { get; private set; }
@@ -197,7 +198,7 @@ namespace HSPI_Elasticsearch
 						}
 						break;
                     default:
-                        Console.WriteLine("No handler yet for HSEvent type {0}", EventType.ToString());
+						logger.LogInfo(string.Format("No handler yet for HSEvent type {0}", EventType.ToString()));
                         Console.WriteLine(" - HSEvent {0}: {1}", EventType.ToString(), String.Join(" | ", parms));
                         break;
                 }
@@ -209,17 +210,19 @@ namespace HSPI_Elasticsearch
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception something foo: {0}", e.Message);
+				logger.LogError(string.Format("Error while handling HS Event: {0}", e.Message));
             }
         }
 
         public string InitIO(string port)
         {
-            Console.WriteLine("InitIO called!");
+			logger.HS = hsHost;
+			logger.LogInfo("Initializing Elasticsearch plugin...");
+
             Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
-            mCore = new ElasticsearchManager(hsHost, hsHostCB, this);
+            mCore = new ElasticsearchManager(hsHost, hsHostCB, this, this.logger);
             mCore.Initialize();
             hsHostCB.RegisterEventCB(Enums.HSEvent.CONFIG_CHANGE, Name, "");
             hsHostCB.RegisterEventCB(Enums.HSEvent.LOG, Name, "");
@@ -239,9 +242,9 @@ namespace HSPI_Elasticsearch
             hsHostCB.RegisterLink(wpd);
             hsHostCB.RegisterConfigLink(wpd);
 
-			settingsManager = new SettingsManager();
+			settingsManager = new SettingsManager(this.logger);
 
-            Console.WriteLine("INIT IO complete");
+            logger.LogInfo("Initialization Complete!");
             return "";
         }
 
@@ -382,7 +385,7 @@ namespace HSPI_Elasticsearch
             HSCOMPort = false;
             HasTriggers = false;
             TriggerCount = 0;
-
+			logger = new Logger(Name);
         }
 
     }
