@@ -49,6 +49,7 @@ namespace HSPI_Elasticsearch
         {
 			this.pluginConfig = new PluginConfig(HS);
 			this.pluginConfig.ConfigChanged += onConfigChange;
+			this.logger.EnableDebug = this.pluginConfig.DebugLogging;
 
 			if(this.pluginConfig.Enabled && this.IsConfigValid())
 			{
@@ -87,6 +88,8 @@ namespace HSPI_Elasticsearch
 
 		protected void onConfigChange(object sender, EventArgs e)
 		{
+			this.logger.EnableDebug = this.pluginConfig.DebugLogging;
+
 			bool isTimerEnabled = this.publishTimer != null;
 			bool isConfigValid = this.IsConfigValid();
 
