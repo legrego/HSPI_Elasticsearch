@@ -16,29 +16,26 @@ namespace HSPI_Elasticsearch
 
     public class PageReturn
     {
-        public int return_code;
-        public String content;
-        public String content_type;
-        public bool full_page;
-        public PageReturn(String pContent, bool pFullPage = false, String pContentType = "text/html", int pReturnCode = 200)
+        public String content { get; private set; }
+        public bool full_page { get; private set; }
+
+        public PageReturn(String pContent, bool pFullPage)
         {
-            return_code = pReturnCode;
             content = pContent;
-            content_type = pContentType;
             full_page = pFullPage;
         }
     }
     /// <remarks>
     /// Class that contains basic functions for building HTML pages and processing postbacks
     /// </remarks>
-    public class PageBuilderBase : Scheduler.PageBuilderAndMenu.clsPageBuilder
+    public abstract class PageBuilderBase : Scheduler.PageBuilderAndMenu.clsPageBuilder
     {
-        protected IHSApplication hsHost;
-        protected IAppCallbackAPI hsHostCB;
-        protected HSPI_Elasticsearch.HSPI pluginInstance;
-		protected Logger logger;
+        protected IHSApplication hsHost { get; private set; }
+        protected IAppCallbackAPI hsHostCB { get; private set; }
+		protected HSPI pluginInstance { get; private set; }
+		protected Logger logger { get; private set; }
 
-        public PageBuilderBase(IHSApplication pHS, IAppCallbackAPI pHSCB, HSPI_Elasticsearch.HSPI plugInInst)
+		protected PageBuilderBase(IHSApplication pHS, IAppCallbackAPI pHSCB, HSPI_Elasticsearch.HSPI plugInInst)
             : base("dummy")
         {
             hsHost = pHS;
@@ -48,9 +45,14 @@ namespace HSPI_Elasticsearch
             reset();
         }
 
-        public String GetPage(String pPageName, String pParamString)
+        public String GetPage(String pPageName, String pParamValue)
         {
             reset();
+			if(pPageName == null)
+			{
+				return null;
+			}
+
             PageName = pPageName;
             String pPageNameClean = pPageName;
             if (pPageNameClean.Contains("/"))
@@ -58,24 +60,10 @@ namespace HSPI_Elasticsearch
                 pPageNameClean = pPageName.Split('/')[1];
             }
 
-            NameValueCollection parts = HttpUtility.ParseQueryString(pParamString);
+            NameValueCollection parts = HttpUtility.ParseQueryString(pParamValue);
 
-            Type objType = GetType();
-            MethodInfo handler = null;
-            try
-            {
-                handler = objType.GetMethod("Page_" + pPageNameClean);
-                if (handler == null)
-                {
-                    return "<h1>Page not found: " + pPageName + "</h1>";
-                }
-            }
-            catch (Exception e)
-            {
-				logger.LogError(string.Format("Exception getting page {0}: {1}", pPageName, e.Message));
-            }
+			PageReturn page = this.HandleGetPage(pPageName, parts);
 
-            PageReturn page = handler.Invoke(this, new object[] { pPageName, pPageNameClean, parts }) as PageReturn;
             if (page.full_page)
             {
                 return page.content;
@@ -90,13 +78,16 @@ namespace HSPI_Elasticsearch
                 return BuildPage();
             }
         }
-        public String GetPage(String pPageName, NameValueCollection pParams)
-        {
-            return "TODO2";
-        }
-        public String PostBack(String pPageName, String pParamString, String pUser, int pUserRights)
+
+		protected abstract PageReturn HandleGetPage(String pPageName, NameValueCollection parts);
+
+        public String PostBack(String pPageName, String pParamValue, String pUser, int pUserRights)
         {
             reset();
+			if(pPageName == null)
+			{
+				return null;
+			}
             PageName = pPageName;
             String pPageNameClean = pPageName;
             if (pPageNameClean.Contains("/"))
@@ -104,29 +95,20 @@ namespace HSPI_Elasticsearch
                 pPageNameClean = pPageName.Split('/')[1];
             }
 
-            NameValueCollection parts = HttpUtility.ParseQueryString(pParamString);
+            NameValueCollection parts = HttpUtility.ParseQueryString(pParamValue);
 
-            Type objType = GetType();
-            MethodInfo handler = null;
-            try
-            {
-                handler = objType.GetMethod("PostHandler_" + pPageNameClean);
-                if (handler == null)
-                {
-                    return "<h1>Page not found: " + pPageName + "</h1>";
-                }
-            }
-            catch (Exception e)
-            {
-				logger.LogError(string.Format("Exception handling postback for page {0}: {1}", pPageName, e.Message));
-            }
-
-            PageReturn page = handler.Invoke(this, new object[] { pPageName, pPageNameClean, parts }) as PageReturn;
-            if (page.full_page)
-                return page.content;
-            else
-                return postBackProc(pPageName, pParamString, pUser, pUserRights);
+			PageReturn page = this.HandlePostBack(pPageName, parts);
+			if(page.full_page)
+			{
+				return page.content;
+			}
+			else
+			{
+				return postBackProc(pPageName, pParamValue, pUser, pUserRights);
+			}
         }
+
+		protected abstract PageReturn HandlePostBack(String pPageName, NameValueCollection pargs);
     }
 }
 
@@ -156,55 +138,11 @@ namespace HSPI_Elasticsearch
             mCore = pCore;
             HS = pHS;
         }
-        public PageReturn Page_HS3_Elasticsearch_Configuration(String pPageName, String pCleanName, NameValueCollection pArgs)
-        {
-            var stb = new StringBuilder();
 
-            string conf_node_id = pArgs.Get("configure_node");
-            stb.Append(DivStart("pluginpage", ""));
-
-            // Add message area for (ajax) errors
-            stb.Append(DivStart("errormessage", "class='errormessage'"));
-            stb.Append(DivEnd());
-
-            stb.Append(DivEnd());
-
-            stb.AppendLine("<h3>Elasticsearch Configuration</h3>");
-            stb.AppendLine("<table border=\"1\" style=\"width: 400px\" cellspacing=\"0\">");
-            stb.AppendLine("<tr><th>Interface port</th><th>Status</th></tr>");
-            int ifCount = 0;
-
-            if (ifCount == 0)
-                stb.AppendLine("<tr><td colspan=\"2\">No interfaces added.</td></tr>");
-            stb.AppendLine("</table>");
-            // TODO: Show table with existing interfaces and status!
-
-            clsJQuery.jqButton ctrlBtnAddInterface = new clsJQuery.jqButton("add_interface", "Add interface", pPageName, true);
-//            var ctrlComPortList = new clsJQuery.jqListBox("com_selector", "");
-            stb.AppendLine(FormStart("addForm", pPageName, "POST"));
-            stb.AppendLine("<h3>Add new controller instance</h3>");
-            stb.AppendLine("<table cellspacing=\"0\">");
-            stb.AppendLine("<tr><td>");
-            stb.AppendLine("<input type=\"text\" name=\"name\" value=\"Primary Controller\">");
-            stb.AppendLine("</td><td>");
-            stb.AppendLine("<select name=\"com_selector\">\n");
-            foreach (var p in SerialPort.GetPortNames())
-            {
-                var validPort = true;
-                if (validPort)
-                    stb.AppendLine("\t<option value=\"" + p + "\">" + p + "</option>\n");
-            }
-            stb.AppendLine("</select>\n");
-            stb.AppendLine("</td></tr>");
-  //          stb.Append(ctrlComPortList.Build());
-            stb.AppendLine("<tr><td>&nbsp;</td><td>");
-            stb.Append("<input type=\"submit\" name=\"add_interface\" value=\"Add\">");
-            stb.AppendLine("</td></tr>");
-            stb.AppendLine("</table>");
-            stb.AppendLine(FormEnd());
-            stb.AppendLine("<br/>");
-            return new PageReturn(stb.ToString(), false);
-        }
+		protected override PageReturn HandleGetPage(String pPageName, NameValueCollection pArgs)
+		{
+			return Page_HS3_Elasticsearch(pArgs);
+		}
 
 		private string BuildSettingTab()
 		{
@@ -237,7 +175,17 @@ namespace HSPI_Elasticsearch
 			return stb.ToString();
 		}
 
-		public PageReturn PostHandler_HS3_Elasticsearch(String pPageName, String pCleanName, NameValueCollection pArgs)
+		protected override PageReturn HandlePostBack(string pPageName, NameValueCollection pargs)
+		{
+			// TODO: actually check page name here.
+			if(pPageName != null)
+			{
+				return PostHandler_HS3_Elasticsearch(pargs);
+			}
+			return null;
+		}
+
+		public PageReturn PostHandler_HS3_Elasticsearch(NameValueCollection pArgs)
         {
 			PluginConfig config = this.mCore.pluginConfig;
 			string action = pArgs["id"];
@@ -261,38 +209,41 @@ namespace HSPI_Elasticsearch
 			}
 			else if(NameToIdWithPrefix(TestButtonName) == action)
 			{
-				PluginConfig testConfig = new PluginConfig(HS, true);
-				PopulatePluginConfig(testConfig, pArgs);
-
-				ConnectionTestResults results = ElasticsearchManager.PerformConnectivityTest(testConfig);
-
-				if(results.ConnectionSuccessful)
+				PluginConfig testConfig;
+				using(testConfig = new PluginConfig(HS, true))
 				{
-					StringBuilder stb = new StringBuilder();
-					stb.Append(@"<div>");
-					stb.Append(@"<h3>Connection Test Successful!<h3>");
-					stb.Append(this.BuildClusterHealthView(results.ClusterHealth));
-					stb.Append(@"</div>");
-					this.divToUpdate.Add(SuccessDivId, stb.ToString());
-					this.divToUpdate.Add(ErrorDivId, "");
-				}
-				else
-				{
-					string message = "Connection test failed";
-					if(results.ClusterHealth != null && results.ClusterHealth.OriginalException != null)
+					PopulatePluginConfig(testConfig, pArgs);
+
+					ConnectionTestResults results = ElasticsearchManager.PerformConnectivityTest(testConfig);
+
+					if(results.ConnectionSuccessful)
 					{
-						message += ": " + results.ClusterHealth.OriginalException.Message;
+						StringBuilder stb = new StringBuilder();
+						stb.Append(@"<div>");
+						stb.Append(@"<h3>Connection Test Successful!<h3>");
+						stb.Append(BuildClusterHealthView(results.ClusterHealth));
+						stb.Append(@"</div>");
+						this.divToUpdate.Add(SuccessDivId, stb.ToString());
+						this.divToUpdate.Add(ErrorDivId, "");
 					}
+					else
+					{
+						string message = "Connection test failed";
+						if(results.ClusterHealth != null && results.ClusterHealth.OriginalException != null)
+						{
+							message += ": " + results.ClusterHealth.OriginalException.Message;
+						}
 
-					this.divToUpdate.Add(SuccessDivId, "");
-					this.divToUpdate.Add(ErrorDivId, message);
+						this.divToUpdate.Add(SuccessDivId, "");
+						this.divToUpdate.Add(ErrorDivId, message);
+					}
 				}
 			}
 
             return new PageReturn("", false);
         }
 
-		private string BuildClusterHealthView(IClusterHealthResponse health)
+		private static string BuildClusterHealthView(IClusterHealthResponse health)
 		{
 			StringBuilder stb = new StringBuilder();
 			stb.Append(@"<div>");
@@ -312,7 +263,7 @@ namespace HSPI_Elasticsearch
 			return stb.ToString();
 		}
 
-		protected void PopulatePluginConfig(PluginConfig config, NameValueCollection formData)
+		protected static void PopulatePluginConfig(PluginConfig config, NameValueCollection formData)
 		{
 			config.Enabled = formData.Get(EnabledId) == "checked";
 			config.ElasticsearchUrl = formData.Get(ElasticsearchUrlId);
@@ -322,13 +273,13 @@ namespace HSPI_Elasticsearch
 			config.SecurityType = formData.Get(SecurityTypeId);
 		}
 
-		protected void UpdatePluginSettings(HSPI_Elasticsearch.Settings.SettingsManager manager, NameValueCollection formData)
+		protected static void UpdatePluginSettings(HSPI_Elasticsearch.Settings.SettingsManager manager, NameValueCollection formData)
 		{
-			AppSettings settings = manager.GetSettings();
+			AppSettings settings = manager.Settings;
 
 			foreach(string arg in formData)
 			{
-				if(arg.StartsWith("eventType_"))
+				if(arg.StartsWith("eventType_", StringComparison.Ordinal))
 				{
 					int eventTypeId = int.Parse(arg.Split('_')[1]);
 					bool enabled = formData[arg] == "checked";
@@ -341,7 +292,7 @@ namespace HSPI_Elasticsearch
 			manager.UpdateSettings(settings);
 		}
         
-        public PageReturn Page_HS3_Elasticsearch(String pPageName, String pCleanName, NameValueCollection pArgs)
+        public PageReturn Page_HS3_Elasticsearch(NameValueCollection pArgs)
         {
             var stb = new StringBuilder();
 
@@ -355,7 +306,7 @@ namespace HSPI_Elasticsearch
 
             stb.Append(DivEnd());
 
-			stb.Append(this.BuildSettingTab());
+			stb.Append(BuildSettingTab());
 
             return new PageReturn(stb.ToString(), false);
         }
@@ -402,7 +353,7 @@ namespace HSPI_Elasticsearch
 
 		protected string BuildEventTypesSelection()
 		{
-			AppSettings settings = this.pluginInstance.settingsManager.GetSettings();
+			AppSettings settings = this.pluginInstance.settingsManager.Settings;
 			StringBuilder stb = new StringBuilder();
 			stb.Append(@"<div>");
 			stb.Append(@"<style> .headerCell {width: 25%;} </style>");

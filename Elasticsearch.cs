@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Security;
 using System.Threading;
 using Elasticsearch.Net;
 using HomeSeerAPI;
-using HSPI_Elasticsearch;
 using HSPI_Elasticsearch.Documents;
 using Nest;
 
@@ -16,11 +16,10 @@ namespace HSPI_Elasticsearch
 		public bool ConnectionSuccessful { get; set; }
 	}
 
-    class ElasticsearchManager
+    class ElasticsearchManager: IDisposable
     {
         IHSApplication HS;
-        IAppCallbackAPI HSCB;
-        HSPI hspiInst;
+
 		Timer publishTimer;
 		Timer rolloverTimer;
 		Logger logger;
@@ -36,11 +35,9 @@ namespace HSPI_Elasticsearch
 
         }
 
-        public ElasticsearchManager(IHSApplication pHsHost, IAppCallbackAPI pHsCB, HSPI pHspiInst, Logger logger)
+        public ElasticsearchManager(IHSApplication pHsHost, Logger logger)
         {
-            hspiInst = pHspiInst;
             HS = pHsHost;
-            HSCB = pHsCB;
 			this.logger = logger;
 			cache = new ConcurrentBag<BaseDocument>();
         }
@@ -61,7 +58,7 @@ namespace HSPI_Elasticsearch
 			}
         }
 
-		public static ConnectionTestResults PerformConnectivityTest(PluginConfig config)
+		public static ConnectionTestResults PerformConnectivityTest(PluginConfig config, Logger logger = null)
 		{
 			ConnectionTestResults results = new ConnectionTestResults();
 			try
@@ -72,6 +69,10 @@ namespace HSPI_Elasticsearch
 			}
 			catch(Exception e)
 			{
+				if(logger != null)
+				{
+					logger.LogInfo(string.Format("Connection test failed: {0}", e.Message));
+				}
 				results.ConnectionSuccessful = false;
 			}
 
@@ -99,6 +100,7 @@ namespace HSPI_Elasticsearch
 			if(shouldDisableTimer)
 			{
 				this.StopPublishTimer();
+				this.StopRolloverTimer();
 			}
 			if(shouldEnableTimer)
 			{
@@ -150,7 +152,7 @@ namespace HSPI_Elasticsearch
 			catch(Exception e)
 			{
 				logger.LogError(string.Format("Error creating index template: {0}", e.Message));
-				throw e;
+				throw;
 			}
 			
 		}
@@ -176,7 +178,7 @@ namespace HSPI_Elasticsearch
 			catch(Exception e)
 			{
 				logger.LogError(string.Format("Error creating index or alias: {0}", e.Message));
-				throw e;
+				throw;
 			}
 		}
 
@@ -286,17 +288,46 @@ namespace HSPI_Elasticsearch
 
 		protected static ElasticClient GetESClient(PluginConfig pluginConfig)
 		{
-			ConnectionSettings connection = new Nest.ConnectionSettings(new Uri(pluginConfig.ElasticsearchUrl));
-
-			if(pluginConfig.SecurityType == "basic" && pluginConfig.Username != null && pluginConfig.Password != null)
+			using(ConnectionSettings connection = new Nest.ConnectionSettings(new Uri(pluginConfig.ElasticsearchUrl)))
 			{
-				connection.BasicAuthentication(pluginConfig.Username, pluginConfig.Password);
+				if(pluginConfig.SecurityType == "basic" && pluginConfig.Username != null && pluginConfig.Password != null)
+				{
+					connection.BasicAuthentication(pluginConfig.Username, pluginConfig.Password);
+				}
+
+				connection.DefaultIndex("active-homeseer-index");
+
+				ElasticClient client = new Nest.ElasticClient(connection);
+				return client;
 			}
-
-			connection.DefaultIndex("active-homeseer-index");
-
-			ElasticClient client = new Nest.ElasticClient(connection);
-			return client;
 		}
-    }
+
+		#region IDisposable
+		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "pluginConfig")]
+		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "rolloverTimer")]
+		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "publishTimer")]
+		public void Dispose()
+		{
+			TryDispose(this.pluginConfig);
+			TryDispose(this.publishTimer);
+			TryDispose(this.rolloverTimer);
+		}
+
+		private static void TryDispose(IDisposable disposable)
+		{
+			if(disposable != null)
+			{
+				try
+				{
+					disposable.Dispose();
+					disposable = null;
+				}
+				catch(Exception e)
+				{
+					Console.Error.WriteLine(string.Format("Error disposing of entity: {0}", e.Message));
+				}
+			}
+		}
+		#endregion
+	}
 }
