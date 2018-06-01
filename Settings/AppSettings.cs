@@ -4,7 +4,7 @@ namespace HSPI_Elasticsearch.Settings
 {
 	public class AppSettings
 	{
-		public List<EventTypeSetting> EventTypeSettings { get; set; }
+		public List<EventTypeSetting> EventTypeSettings { get; }
 
 		public AppSettings()
 		{

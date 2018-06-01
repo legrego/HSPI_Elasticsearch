@@ -7,22 +7,20 @@ using HomeSeerAPI;
 using HSPI_Elasticsearch.Documents;
 using HSPI_Elasticsearch.Settings;
 
-[assembly: System.Security.SecurityRules(System.Security.SecurityRuleSet.Level1)]
 namespace HSPI_Elasticsearch
 {
 
     public class HSPI : IPlugInAPI, IDisposable
     {
         private ElasticsearchManager mCore;
-        private Dictionary<int, DateTime> mLastDSUpdate = new Dictionary<int, DateTime>();
         PageBuilder mPageBuilder;
 
         private string mFriendlyName = Constants.PLUGIN_STRING_NAME;
-        public bool Running = true;
-        public IHSApplication hsHost;
-        public IAppCallbackAPI hsHostCB;
-		public SettingsManager settingsManager;
-		public Logger logger;
+		public bool Running { get; set; } = true;
+        public IHSApplication hsHost { get; set; }
+        public IAppCallbackAPI hsHostCB { get; set; }
+		public SettingsManager settingsManager { get; set; }
+		public Logger logger { get; set; }
 
         // HS3 Plugin properties
         public string Name { get; private set; }
@@ -42,6 +40,12 @@ namespace HSPI_Elasticsearch
 				// dispose managed resources
 				mPageBuilder.Dispose();
                 mPageBuilder = null;
+
+				mCore.Dispose();
+				mCore = null;
+
+				settingsManager.Dispose();
+				settingsManager = null;
             }
             // free native resources
         }
@@ -158,13 +162,12 @@ namespace HSPI_Elasticsearch
 
         public void HSEvent(HomeSeerAPI.Enums.HSEvent EventType, object[] parms)
         {
-			bool canContinue = this.settingsManager.GetSettings().IsEventTypeEnabled((int) EventType);
+			bool canContinue = this.settingsManager.Settings.IsEventTypeEnabled((int) EventType);
 			if(!canContinue) return;
 
 			BaseDocument document = null;
             try
             {
-                string Source = "Unknown";
                 switch (EventType)
                 {
                     case Enums.HSEvent.CONFIG_CHANGE:
@@ -176,11 +179,7 @@ namespace HSPI_Elasticsearch
 						document = new LogEvent(parms);
                         break;
                     case Enums.HSEvent.STRING_CHANGE:
-                        {
-                            Source = parms[3].ToString();
-                            string dev_addr = parms[1].ToString();
-							document = new StringChangeEvent(parms);
-                        }
+						document = new StringChangeEvent(parms);
                         break;
                     case Enums.HSEvent.VALUE_CHANGE:
                         {
@@ -194,7 +193,7 @@ namespace HSPI_Elasticsearch
 						break;
 					case Enums.HSEvent.SETUP_CHANGE:
 						{
-							document = new SetupChangeEvent(parms);
+							document = new SetupChangeEvent();
 						}
 						break;
                     default:
@@ -222,7 +221,7 @@ namespace HSPI_Elasticsearch
             Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
-            mCore = new ElasticsearchManager(hsHost, hsHostCB, this, this.logger);
+            mCore = new ElasticsearchManager(hsHost, this.logger);
             mCore.Initialize();
             hsHostCB.RegisterEventCB(Enums.HSEvent.CONFIG_CHANGE, Name, "");
             hsHostCB.RegisterEventCB(Enums.HSEvent.LOG, Name, "");
@@ -308,9 +307,10 @@ namespace HSPI_Elasticsearch
         {
         }
 
-        public void SetIOMulti(System.Collections.Generic.List<CAPI.CAPIControl> colSend)
+        public void SetIOMulti(List<CAPI.CAPIControl> colSend)
         {
-            Console.WriteLine("Set IO Multi : {0}", colSend[0]);
+			CAPI.CAPIControl val = colSend == null || colSend.Count == 0 ? null : colSend[0];
+            Console.WriteLine("Set IO Multi : {0}", val);
         }
 
         public void ShutdownIO()
@@ -375,17 +375,12 @@ namespace HSPI_Elasticsearch
         }
 
         public HSPI()
-            : this("")
-        {
-        }
-
-        public HSPI(String pInstance)
         {
             Name = Constants.PLUGIN_STRING_NAME;
             HSCOMPort = false;
             HasTriggers = false;
             TriggerCount = 0;
-			logger = new Logger(Name);
+			logger = new Logger(Name, null, true);
         }
 
     }

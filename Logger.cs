@@ -10,7 +10,7 @@ namespace HSPI_Elasticsearch
 		public IHSApplication HS { get; set; }
 		public bool EnableDebug { get; set; }
 
-		public Logger(string name, IHSApplication HS = null, bool enableDebug = true)
+		public Logger(string name, IHSApplication HS, bool enableDebug)
 		{
 			this.Name = name;
 			this.HS = HS;

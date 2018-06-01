@@ -32,7 +32,7 @@ namespace HSPI_Elasticsearch
 		public string Name { get; set; }
 		public string Description { get; set; }
 
-		public EventType(int id, string name, string desc = "")
+		public EventType(int id, string name, string desc)
 		{
 			this.EventTypeId = id;
 			this.Name = name;

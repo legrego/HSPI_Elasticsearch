@@ -10,10 +10,9 @@ namespace HSPI_Elasticsearch.Documents
 
 
 	[ElasticsearchType(Name="event")]
-	abstract class BaseDocument
+	abstract class BaseDocument: IHomeSeerEventDocument
 	{
-		public static string DATE_TIME_FORMAT = "yyyyMMddTHHmmss.fffffffZ" +
-			"";
+		public static string DATE_TIME_FORMAT = "yyyyMMddTHHmmss.fffffffZ";
 
 		public string Id { get; set; }
 
@@ -100,7 +99,7 @@ namespace HSPI_Elasticsearch.Documents
 
 	class SetupChangeEvent : BaseDocument
 	{
-		public SetupChangeEvent(object[] eventParams) : base("SETUP_CHANGE")
+		public SetupChangeEvent() : base("SETUP_CHANGE")
 		{
 		}
 	}
