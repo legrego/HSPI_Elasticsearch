@@ -9,7 +9,6 @@ using HSCF.Communication.ScsServices.Client;
 
 namespace HSPI_Elasticsearch
 {
-    using Elasticsearch;
     public class Manager : IDisposable
     {
         IScsServiceClient<IHSApplication> client;
@@ -27,7 +26,6 @@ namespace HSPI_Elasticsearch
                 pluginInst.Dispose();
                 pluginInst = null;
             }
-            // free native resources
         }
 
         public void Dispose()

@@ -35,7 +35,7 @@ namespace HSPI_Elasticsearch
 		protected HSPI pluginInstance { get; private set; }
 		protected Logger logger { get; private set; }
 
-		protected PageBuilderBase(IHSApplication pHS, IAppCallbackAPI pHSCB, HSPI_Elasticsearch.HSPI plugInInst)
+		protected PageBuilderBase(IHSApplication pHS, IAppCallbackAPI pHSCB, HSPI plugInInst)
             : base("dummy")
         {
             hsHost = pHS;
