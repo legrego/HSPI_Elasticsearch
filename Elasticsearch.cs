@@ -143,7 +143,7 @@ namespace HSPI_Elasticsearch
 					.Mappings(ms => ms.Map<BaseDocument>(m => m.AutoMap()))
 					.IndexPatterns(new string[] { "homeseer-events-*" })
 					.Settings(s => s
-						.NumberOfShards(3)
+						.NumberOfShards(1)
 						.NumberOfReplicas(0)
 					)
 					.Aliases(a => a.Alias("search-homeseer-events"))
