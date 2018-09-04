@@ -128,25 +128,25 @@ namespace HSPI_Elasticsearch
 		{
 			logger.LogInfo("Setting up Index Template");
 
-			IExistsResponse templateExists = client.IndexTemplateExists("homeseer-active-events");
+			IExistsResponse templateExists = client.IndexTemplateExists("homeseer-index-template");
 			if(templateExists.Exists)
 			{
-				logger.LogInfo("Index Template 'homeseer-active-events' already exists!");
+				logger.LogInfo("Index Template 'homeseer-index-template' already exists!");
 				return;
 			}
 
-			logger.LogInfo("Creating index template 'homeseer-active-events'");
+			logger.LogInfo("Creating index template 'homeseer-index-template'");
 
 			try
 			{
-				client.PutIndexTemplate("homeseer-active-events", (c) => c
+				client.PutIndexTemplate("homeseer-index-template", (c) => c
 					.Mappings(ms => ms.Map<BaseDocument>(m => m.AutoMap()))
 					.IndexPatterns(new string[] { "homeseer-events-*" })
 					.Settings(s => s
 						.NumberOfShards(1)
 						.NumberOfReplicas(0)
 					)
-					.Aliases(a => a.Alias("search-homeseer-events"))
+					.Aliases(a => a.Alias("all-homeseer-events"))
 				);
 			}
 			catch(Exception e)
@@ -172,8 +172,7 @@ namespace HSPI_Elasticsearch
 
 			try
 			{
-				client.CreateIndex("homeseer-events-00001");
-				client.Alias(s => s.Add(a => a.Index("homeseer-events-1").Alias("active-homeseer-index")));
+				client.CreateIndex("homeseer-events-00001", index => index.Aliases(alias => alias.Alias("active-homeseer-index")));
 			}
 			catch(Exception e)
 			{
