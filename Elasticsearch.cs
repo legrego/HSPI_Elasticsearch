@@ -5,10 +5,10 @@ using System.Security;
 using System.Threading;
 using Elasticsearch.Net;
 using HomeSeerAPI;
-using HSPI_Elasticsearch.Documents;
+using Hspi.Documents;
 using Nest;
 
-namespace HSPI_Elasticsearch
+namespace Hspi
 {
 	class ConnectionTestResults
 	{
@@ -22,35 +22,31 @@ namespace HSPI_Elasticsearch
 
 		Timer publishTimer;
 		Timer rolloverTimer;
-		Logger logger;
-		ConcurrentBag<BaseDocument> cache;
-		public PluginConfig pluginConfig;
-		
-		
+        readonly ConcurrentBag<BaseDocument> cache;
+        readonly ElasticsearchPlugin pluginInstance;
+
+        private PluginConfig Config {  get { return pluginInstance.Config; } }
+
+
         public void Stop()
         {
 			// Shutdown thing
-			logger.LogInfo("Plugin shutdown");
-            Console.WriteLine(" - DONE");
+			
 
         }
 
-        public ElasticsearchManager(IHSApplication pHsHost, Logger logger)
+        public ElasticsearchManager(IHSApplication pHsHost, ElasticsearchPlugin pluginInstance)
         {
             HS = pHsHost;
-			this.logger = logger;
-			cache = new ConcurrentBag<BaseDocument>();
+            this.pluginInstance = pluginInstance;
+            cache = new ConcurrentBag<BaseDocument>();
         }
 
         public void Initialize()
         {
-			this.pluginConfig = new PluginConfig(HS);
-			this.pluginConfig.ConfigChanged += onConfigChange;
-			this.logger.EnableDebug = this.pluginConfig.DebugLogging;
-
-			if(this.pluginConfig.Enabled && this.IsConfigValid())
+			if(Config.Enabled && this.IsConfigValid())
 			{
-				ElasticClient client = GetESClient(this.pluginConfig);
+				ElasticClient client = GetESClient(Config);
 				this.CreateIndexTemplates(client);
 				this.CreateInitialIndex(client);
 				this.StartRolloverTimer();
@@ -81,7 +77,7 @@ namespace HSPI_Elasticsearch
 
 		public void WriteDocument(BaseDocument document)
 		{
-			if(this.pluginConfig.Enabled)
+			if(Config.Enabled)
 			{
 				this.cache.Add(document);
 			}
@@ -89,13 +85,11 @@ namespace HSPI_Elasticsearch
 
 		protected void onConfigChange(object sender, EventArgs e)
 		{
-			this.logger.EnableDebug = this.pluginConfig.DebugLogging;
-
 			bool isTimerEnabled = this.publishTimer != null;
 			bool isConfigValid = this.IsConfigValid();
 
-			bool shouldDisableTimer = isTimerEnabled && (!isConfigValid || !this.pluginConfig.Enabled);
-			bool shouldEnableTimer = !isTimerEnabled && this.pluginConfig.Enabled && isConfigValid;
+			bool shouldDisableTimer = isTimerEnabled && (!isConfigValid || !Config.Enabled);
+			bool shouldEnableTimer = !isTimerEnabled && Config.Enabled && isConfigValid;
 
 			if(shouldDisableTimer)
 			{
@@ -104,38 +98,27 @@ namespace HSPI_Elasticsearch
 			}
 			if(shouldEnableTimer)
 			{
-				logger.LogInfo("Enabling ES Publish Timer due to config change");
+				pluginInstance.LogInfo("Enabling ES Publish Timer due to config change");
 				this.Initialize();
 			}
 
-			if(!this.pluginConfig.Enabled)
-			{
-				// safely empty cache when disabling plugin
-				BaseDocument discard;
-				while(!this.cache.IsEmpty) this.cache.TryTake(out discard);
-			}
-		}
+			if(!Config.Enabled)
+            {
+                // safely empty cache when disabling plugin
+                while (!this.cache.IsEmpty) this.cache.TryTake(out BaseDocument discard);
+            }
+        }
 
 		protected bool IsConfigValid()
 		{
-			string url = this.pluginConfig.ElasticsearchUrl;
+			string url = Config.ElasticsearchUrl;
 
-			Uri uri;
-			return Uri.TryCreate(url, UriKind.Absolute, out uri);
-		}
+            return Uri.TryCreate(url, UriKind.Absolute, out Uri uri);
+        }
 
-		protected void CreateIndexTemplates(ElasticClient client)
+        protected void CreateIndexTemplates(ElasticClient client)
 		{
-			logger.LogInfo("Setting up Index Template");
-
-			IExistsResponse templateExists = client.IndexTemplateExists("homeseer-index-template");
-			if(templateExists.Exists)
-			{
-				logger.LogInfo("Index Template 'homeseer-index-template' already exists!");
-				return;
-			}
-
-			logger.LogInfo("Creating index template 'homeseer-index-template'");
+            pluginInstance.LogInfo("Creating/Updating index template 'homeseer-index-template'");
 
 			try
 			{
@@ -151,7 +134,7 @@ namespace HSPI_Elasticsearch
 			}
 			catch(Exception e)
 			{
-				logger.LogError(string.Format("Error creating index template: {0}", e.Message));
+                pluginInstance.LogError(string.Format("Error creating index template: {0}", e.Message));
 				throw;
 			}
 			
@@ -159,16 +142,16 @@ namespace HSPI_Elasticsearch
 
 		protected void CreateInitialIndex(ElasticClient client)
 		{
-			logger.LogInfo("Setting up initial index and alias");
+            pluginInstance.LogInfo("Setting up initial index and alias");
 
-			IExistsResponse aliasExists = client.AliasExists(a => a.Name("active-homeseer-index"));
+			IExistsResponse aliasExists = client.AliasExists("active-homeseer-index");
 			if(aliasExists.Exists)
 			{
-				logger.LogInfo("Alias 'active-homeseer-index' already exists!");
+                pluginInstance.LogInfo("Alias 'active-homeseer-index' already exists!");
 				return;
 			}
 
-			logger.LogInfo("Creating alias and initial index");
+            pluginInstance.LogInfo("Creating alias and initial index");
 
 			try
 			{
@@ -176,7 +159,7 @@ namespace HSPI_Elasticsearch
 			}
 			catch(Exception e)
 			{
-				logger.LogError(string.Format("Error creating index or alias: {0}", e.Message));
+                pluginInstance.LogError(string.Format("Error creating index or alias: {0}", e.Message));
 				throw;
 			}
 		}
@@ -188,15 +171,15 @@ namespace HSPI_Elasticsearch
 			rolloverTimer = new Timer((g) => {
 				try
 				{
-					logger.LogInfo("Calling Rollover API");
-					ElasticClient client = GetESClient(this.pluginConfig);
+                    pluginInstance.LogInfo("Calling Rollover API");
+					ElasticClient client = GetESClient(Config);
 					client.RolloverIndex("active-homeseer-index", ri => ri
 						.Conditions(c => c.MaxAge("7d").MaxDocs(10000))
 					);
 				}
 				catch(Exception e)
 				{
-					logger.LogError(string.Format("Error calling Rollover API: {0}", e.Message));
+                    pluginInstance.LogError(string.Format("Error calling Rollover API: {0}", e.Message));
 				}
 
 				rolloverTimer.Change(oneHour, Timeout.Infinite);
@@ -216,7 +199,7 @@ namespace HSPI_Elasticsearch
 				}
 				catch(Exception e)
 				{
-					logger.LogError(string.Format("Error stopping rollover timer: {0}", e.Message));
+                    pluginInstance.LogError(string.Format("Error stopping rollover timer: {0}", e.Message));
 				}
 			}
 		}
@@ -229,10 +212,12 @@ namespace HSPI_Elasticsearch
 			this.publishTimer = new Timer((g) => {
 
 				BaseDocument document;
-				IBulkRequest request = new BulkRequest("active-homeseer-index");
-				request.Operations = new List<IBulkOperation>();
+                IBulkRequest request = new BulkRequest("active-homeseer-index")
+                {
+                    Operations = new List<IBulkOperation>()
+                };
 
-				while(!this.cache.IsEmpty)
+                while (!this.cache.IsEmpty)
 				{
 					if(this.cache.TryTake(out document))
 					{
@@ -242,28 +227,28 @@ namespace HSPI_Elasticsearch
 
 				if(request.Operations.Count == 0)
 				{
-					logger.LogDebug("WriteToCluster: no documents to write");
+                    pluginInstance.LogDebug("WriteToCluster: no documents to write");
 					this.publishTimer.Change(thirtySeconds, Timeout.Infinite);
 					return;
 				}
 
 				try
 				{
-					logger.LogDebug(string.Format("Writing {0} documents to Elasticsearch...", request.Operations.Count));
-				ElasticClient client = GetESClient(this.pluginConfig);
+                    pluginInstance.LogDebug(string.Format("Writing {0} documents to Elasticsearch...", request.Operations.Count));
+				ElasticClient client = GetESClient(Config);
 					IBulkResponse r = client.Bulk(request);
 					if(r.IsValid)
 					{
-						logger.LogDebug("Document publish Successful!");
+                        pluginInstance.LogDebug("Document publish Successful!");
 					}
 					else
 					{
-						logger.LogError(string.Format("Document published failed: {0}", r.DebugInformation));
+                        pluginInstance.LogError(string.Format("Document published failed: {0}", r.DebugInformation));
 					}
 				}
 				catch(Exception e)
 				{
-					logger.LogError(string.Format("Error writing documents to Elasticsearch: {0}", e.Message));
+                    pluginInstance.LogError(string.Format("Error writing documents to Elasticsearch: {0}", e.Message));
 				}
 				this.publishTimer.Change(thirtySeconds, Timeout.Infinite);
 			}, null, 0, Timeout.Infinite);
@@ -280,7 +265,7 @@ namespace HSPI_Elasticsearch
 				}
 				catch(Exception e)
 				{
-					logger.LogError(string.Format("Error stopping publish timer: {0}", e.Message));
+                    pluginInstance.LogError(string.Format("Error stopping publish timer: {0}", e.Message));
 				}
 			}
 		}
@@ -307,7 +292,6 @@ namespace HSPI_Elasticsearch
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "publishTimer")]
 		public void Dispose()
 		{
-			TryDispose(this.pluginConfig);
 			TryDispose(this.publishTimer);
 			TryDispose(this.rolloverTimer);
 		}
