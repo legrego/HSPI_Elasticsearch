@@ -1,38 +1,41 @@
 ﻿<Properties StartupConfiguration="{0715C7AB-10B7-492D-B64C-26741F33C95F}|Default">
   <MonoDevelop.Ide.ItemProperties.HSPI__Elasticsearch PreferredExecutionTarget="MonoDevelop.Default" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="install.txt">
+  <MonoDevelop.Ide.Workbench ActiveDocument=".gitignore">
     <Files>
-      <File FileName="Pages/ConfigPage.cs" Line="255" Column="68" />
-      <File FileName="HSPI/HSPI.cs" Line="9" Column="6" />
-      <File FileName="Elasticsearch.cs" Line="207" Column="37" />
-      <File FileName="ElasticsearchPlugin.cs" Line="40" Column="1" />
-      <File FileName="Program.cs" Line="32" Column="1" />
-      <File FileName="HSPI/IPlugInAPI2.cs" Line="10" Column="38" />
-      <File FileName="Pages/PageHelper.cs" Line="32" Column="34" />
+      <File FileName="Pages/ConfigPage.cs" Line="1" Column="1" />
+      <File FileName="HSPI/HSPI.cs" Line="1" Column="1" />
+      <File FileName="Elasticsearch.cs" Line="1" Column="1" />
+      <File FileName="ElasticsearchPlugin.cs" Line="1" Column="1" />
+      <File FileName="Program.cs" Line="1" Column="1" />
+      <File FileName="HSPI/IPlugInAPI2.cs" Line="1" Column="1" />
+      <File FileName="Pages/PageHelper.cs" Line="1" Column="1" />
       <File FileName="Properties/AssemblyInfo.cs" Line="1" Column="1" />
-      <File FileName="Properties/Resources.resx" Line="123" Column="10" />
-      <File FileName="Properties/Resources.Designer.cs" Line="54" Column="10" />
+      <File FileName="Properties/Resources.Designer.cs" Line="1" Column="1" />
       <File FileName="GlobalSuppressions.cs" Line="12" Column="1" />
-      <File FileName="Logger.cs" Line="44" Column="1" />
-      <File FileName="HSPI/HSPIBase.cs" Line="22" Column="44" />
-      <File FileName="PluginConfig.cs" Line="59" Column="35" />
-      <File FileName="EventTypes.cs" Line="21" Column="18" />
+      <File FileName="Logger.cs" Line="1" Column="1" />
+      <File FileName="HSPI/HSPIBase.cs" Line="1" Column="1" />
+      <File FileName="PluginConfig.cs" Line="1" Column="1" />
+      <File FileName="EventTypes.cs" Line="1" Column="1" />
       <File FileName="../../../../Library/Frameworks/Mono.framework/Versions/5.16.1/lib/mono/msbuild/15.0/bin/Microsoft.Common.CurrentVersion.targets" Line="2130" Column="30" />
-      <File FileName="HSPI/HSTraceListener.cs" Line="26" Column="10" />
-      <File FileName="Constants.cs" Line="10" Column="2" />
-      <File FileName="Documents/Events.cs" Line="1" Column="14" />
+      <File FileName="HSPI/HSTraceListener.cs" Line="1" Column="1" />
+      <File FileName="Constants.cs" Line="1" Column="1" />
+      <File FileName="Documents/Events.cs" Line="1" Column="1" />
       <File FileName="Documents/IHomeSeerEventDocument.cs" Line="1" Column="1" />
       <File FileName="Exceptions/ExceptionHelper.cs" Line="1" Column="1" />
       <File FileName="Exceptions/HspiConnectionException.cs" Line="1" Column="1" />
       <File FileName="Exceptions/HspiException.cs" Line="1" Column="1" />
       <File FileName="Scripts/package_plugin.sh" Line="1" Column="1" />
-      <File FileName="install.txt" Line="7" Column="1" />
+      <File FileName="install.txt" Line="1" Column="1" />
+      <File FileName=".gitattributes" Line="1" Column="1" />
+      <File FileName=".gitignore" Line="159" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State name="__root__">
           <Node name="HS3_Elasticsearch" expanded="True">
-            <Node name="HSPI_Elasticsearch" expanded="True" selected="True" />
+            <Node name="HSPI_Elasticsearch" expanded="True">
+              <Node name=".gitignore" selected="True" />
+            </Node>
           </Node>
         </State>
       </Pad>
